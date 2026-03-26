@@ -1,0 +1,12 @@
+{
+  "name": "Me",
+  "version": "1.0.0",
+  "description": "Vinay Yadav personal portfolio website",
+  "private": true,
+  "scripts": {
+    "build": "cd Frontend && npm ci && npm run build",
+    "test": "echo \"No tests configured\" && exit 0",
+    "dev": "cd Frontend && npm run dev",
+    "start": "cd Backend/server && node index.js"
+  }
+}

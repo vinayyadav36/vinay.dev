@@ -30,6 +30,7 @@
           <a href="#skills" class="nav-link" @click="scrollToSection('skills')">[ SKILLS ]</a>
           <a href="#projects" class="nav-link" @click="scrollToSection('projects')">[ PROJECTS ]</a>
           <router-link to="/certifications" class="nav-link">[ CERTIFICATIONS ]</router-link>
+          <router-link to="/business" class="nav-link">[ BUSINESS ]</router-link>
           <a href="#contact" class="nav-link" @click="scrollToSection('contact')">[ CONTACT ]</a>
         </div>
       </div>
@@ -45,16 +46,17 @@
             <span class="title-text">ABOUT</span>
             <span class="title-brackets">]</span>
           </h2>
-          <div class="content-box">
+          <div class="content-box" :class="{ 'box-minimized': windowStates.about === 'minimized', 'box-maximized': windowStates.about === 'maximized', 'box-closed': windowStates.about === 'closed' }">
             <div class="terminal-header">
               <div class="terminal-buttons">
-                <span class="terminal-btn close"></span>
-                <span class="terminal-btn minimize"></span>
-                <span class="terminal-btn maximize"></span>
+                <span class="terminal-btn close" title="Close" @click="closeWindow('about')"></span>
+                <span class="terminal-btn minimize" title="Minimize" @click="minimizeWindow('about')"></span>
+                <span class="terminal-btn maximize" title="Maximize" @click="maximizeWindow('about')"></span>
               </div>
               <span class="terminal-title">about.txt</span>
+              <span v-if="windowStates.about === 'minimized'" class="restore-hint" @click="restoreWindow('about')">[click to restore]</span>
             </div>
-            <div class="terminal-content">
+            <div class="terminal-content" v-show="windowStates.about !== 'minimized'">
               <p class="intro">{{ personalInfo.intro }}</p>
               <div class="stats-grid">
                 <div class="stat-item" v-for="(stat, index) in personalStats" :key="index">
@@ -76,16 +78,17 @@
             <span class="title-text">SKILLS</span>
             <span class="title-brackets">]</span>
           </h2>
-          <div class="content-box">
+          <div class="content-box" :class="{ 'box-minimized': windowStates.skills === 'minimized', 'box-maximized': windowStates.skills === 'maximized', 'box-closed': windowStates.skills === 'closed' }">
             <div class="terminal-header">
               <div class="terminal-buttons">
-                <span class="terminal-btn close"></span>
-                <span class="terminal-btn minimize"></span>
-                <span class="terminal-btn maximize"></span>
+                <span class="terminal-btn close" title="Close" @click="closeWindow('skills')"></span>
+                <span class="terminal-btn minimize" title="Minimize" @click="minimizeWindow('skills')"></span>
+                <span class="terminal-btn maximize" title="Maximize" @click="maximizeWindow('skills')"></span>
               </div>
               <span class="terminal-title">skills.exe</span>
+              <span v-if="windowStates.skills === 'minimized'" class="restore-hint" @click="restoreWindow('skills')">[click to restore]</span>
             </div>
-            <div class="terminal-content">
+            <div class="terminal-content" v-show="windowStates.skills !== 'minimized'">
               <div class="skills-container">
                 <div class="skill-category" v-for="category in skills" :key="category.name">
                   <h3 class="category-header">
@@ -94,11 +97,22 @@
                   </h3>
                   <div class="skill-items">
                     <div class="skill-item" v-for="skill in category.items" :key="skill.name">
-                      <span class="skill-name">{{ skill.name }}</span>
-                      <div class="skill-bar">
-                        <div class="skill-progress" :style="{ width: skill.level + '%' }"></div>
+                      <div class="skill-name-wrapper">
+                        <span class="skill-name" :title="skill.name">{{ skill.name.length > 10 ? skill.name.slice(0, 7) + '...' : skill.name }}</span>
+                        <div class="skill-hover-card" v-if="skill.resources && skill.resources.length">
+                          <strong>{{ skill.name }}</strong>
+                          <a v-for="res in skill.resources" :key="res.url" :href="res.url" target="_blank" rel="noopener" class="skill-resource-link">{{ res.label }}</a>
+                        </div>
+                        <div class="skill-hover-card" v-else>
+                          <strong>{{ skill.name }}</strong>
+                          <span class="skill-level-text">Proficiency: {{ skill.level }}%</span>
+                        </div>
                       </div>
-                      <span class="skill-percentage">{{ skill.level }}%</span>
+                      <div class="skill-bar">
+                        <div class="skill-progress" :style="{ width: skill.level + '%' }">
+                          <span class="skill-percentage-inside">{{ skill.level }}%</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -114,16 +128,17 @@
             <span class="title-text">PROJECTS</span>
             <span class="title-brackets">]</span>
           </h2>
-          <div class="content-box">
+          <div class="content-box" :class="{ 'box-minimized': windowStates.projects === 'minimized', 'box-maximized': windowStates.projects === 'maximized', 'box-closed': windowStates.projects === 'closed' }">
             <div class="terminal-header">
               <div class="terminal-buttons">
-                <span class="terminal-btn close"></span>
-                <span class="terminal-btn minimize"></span>
-                <span class="terminal-btn maximize"></span>
+                <span class="terminal-btn close" title="Close" @click="closeWindow('projects')"></span>
+                <span class="terminal-btn minimize" title="Minimize" @click="minimizeWindow('projects')"></span>
+                <span class="terminal-btn maximize" title="Maximize" @click="maximizeWindow('projects')"></span>
               </div>
               <span class="terminal-title">projects.dir</span>
+              <span v-if="windowStates.projects === 'minimized'" class="restore-hint" @click="restoreWindow('projects')">[click to restore]</span>
             </div>
-            <div class="terminal-content">
+            <div class="terminal-content" v-show="windowStates.projects !== 'minimized'">
               <div class="projects-grid">
                 <div class="project-item" v-for="project in projects" :key="project.name">
                   <div class="project-header">
@@ -150,16 +165,17 @@
             <span class="title-text">CONTACT</span>
             <span class="title-brackets">]</span>
           </h2>
-          <div class="content-box">
+          <div class="content-box" :class="{ 'box-minimized': windowStates.contact === 'minimized', 'box-maximized': windowStates.contact === 'maximized', 'box-closed': windowStates.contact === 'closed' }">
             <div class="terminal-header">
               <div class="terminal-buttons">
-                <span class="terminal-btn close"></span>
-                <span class="terminal-btn minimize"></span>
-                <span class="terminal-btn maximize"></span>
+                <span class="terminal-btn close" title="Close" @click="closeWindow('contact')"></span>
+                <span class="terminal-btn minimize" title="Minimize" @click="minimizeWindow('contact')"></span>
+                <span class="terminal-btn maximize" title="Maximize" @click="maximizeWindow('contact')"></span>
               </div>
               <span class="terminal-title">contact.exe</span>
+              <span v-if="windowStates.contact === 'minimized'" class="restore-hint" @click="restoreWindow('contact')">[click to restore]</span>
             </div>
-            <div class="terminal-content">
+            <div class="terminal-content" v-show="windowStates.contact !== 'minimized'">
               <div class="contact-layout">
                 <div class="contact-info">
                   <h3 class="contact-header">📞 GET IN TOUCH</h3>
@@ -302,87 +318,87 @@ const personalStats = [
   { icon: '☕', label: 'Coffee Consumed', value: '∞ Cups' }
 ]
 
-// Enhanced Skills Data with levels
+// Enhanced Skills Data with levels and resource links
 const skills = [
   {
     name: 'Frontend Technologies',
     items: [
-      { name: 'JavaScript/TypeScript', level: 95 },
-      { name: 'Vue.js', level: 90 },
-      { name: 'React', level: 85 },
-      { name: 'HTML5/CSS3', level: 95 },
-      { name: 'Responsive Design', level: 90 },
-      { name: 'Web Design & Development', level: 90 },
-      { name: 'Web Development Basics', level: 85 },
+      { name: 'JavaScript/TypeScript', level: 95, resources: [{ label: 'MDN JS Docs', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript' }, { label: 'TS Handbook', url: 'https://www.typescriptlang.org/docs/handbook/intro.html' }] },
+      { name: 'Vue.js', level: 90, resources: [{ label: 'Vue Docs', url: 'https://vuejs.org/guide/introduction.html' }] },
+      { name: 'React', level: 85, resources: [{ label: 'React Docs', url: 'https://react.dev' }] },
+      { name: 'HTML5/CSS3', level: 95, resources: [{ label: 'MDN HTML', url: 'https://developer.mozilla.org/en-US/docs/Web/HTML' }, { label: 'MDN CSS', url: 'https://developer.mozilla.org/en-US/docs/Web/CSS' }] },
+      { name: 'Responsive Design', level: 90, resources: [{ label: 'CSS Tricks', url: 'https://css-tricks.com/snippets/css/a-guide-to-flexbox/' }] },
+      { name: 'Web Design & Development', level: 90, resources: [{ label: 'freeCodeCamp', url: 'https://www.freecodecamp.org' }] },
+      { name: 'Web Development Basics', level: 85, resources: [{ label: 'The Odin Project', url: 'https://www.theodinproject.com' }] },
     ]
   },
   {
     name: 'Backend Technologies',
     items: [
-      { name: 'Node.js', level: 90 },
-      { name: 'Express.js', level: 85 },
-      { name: 'Python', level: 80 },
-      { name: 'REST APIs', level: 90 },
-      { name: 'Database Design', level: 85 }
+      { name: 'Node.js', level: 90, resources: [{ label: 'Node.js Docs', url: 'https://nodejs.org/en/docs' }] },
+      { name: 'Express.js', level: 85, resources: [{ label: 'Express Docs', url: 'https://expressjs.com' }] },
+      { name: 'Python', level: 80, resources: [{ label: 'Python Docs', url: 'https://docs.python.org/3/' }] },
+      { name: 'REST APIs', level: 90, resources: [{ label: 'REST API Tutorial', url: 'https://restfulapi.net' }] },
+      { name: 'Database Design', level: 85, resources: [{ label: 'DB Design Guide', url: 'https://www.lucidchart.com/pages/database-diagram/database-design' }] }
     ]
   },
   {
     name: 'Tools & DevOps',
     items: [
-      { name: 'Git', level: 95 },
-      { name: 'Docker', level: 80 },
-      { name: 'VS Code', level: 95 },
-      { name: 'Linux', level: 85 },
-      { name: 'CI/CD', level: 75 },
-      { name: 'Advanced Excel', level: 90 },
+      { name: 'Git', level: 95, resources: [{ label: 'Git Docs', url: 'https://git-scm.com/doc' }] },
+      { name: 'Docker', level: 80, resources: [{ label: 'Docker Docs', url: 'https://docs.docker.com' }] },
+      { name: 'VS Code', level: 95, resources: [{ label: 'VS Code Tips', url: 'https://code.visualstudio.com/docs' }] },
+      { name: 'Linux', level: 85, resources: [{ label: 'Linux Journey', url: 'https://linuxjourney.com' }] },
+      { name: 'CI/CD', level: 75, resources: [{ label: 'GitHub Actions', url: 'https://docs.github.com/en/actions' }] },
+      { name: 'Advanced Excel', level: 90, resources: [{ label: 'Excel Tips', url: 'https://support.microsoft.com/en-us/excel' }] },
     ]
   },
   {
     name: 'Digital Skills',
     items: [
-      { name: 'Digital Advertisement', level: 85 },
-      { name: 'Introduction to Digital Business Skills', level: 80 },
-      { name: 'Professional & Life Skills', level: 85 },
-      { name: 'Sales Specialist', level: 80 },
-      { name: 'Data Analytics & Visualization', level: 80 },
-      { name: 'Learn JavaScript', level: 80 },
+      { name: 'Digital Advertisement', level: 85, resources: [{ label: 'Google Ads', url: 'https://skillshop.withgoogle.com' }] },
+      { name: 'Introduction to Digital Business Skills', level: 80, resources: [{ label: 'HP LIFE', url: 'https://www.life-global.org' }] },
+      { name: 'Professional & Life Skills', level: 85, resources: [] },
+      { name: 'Sales Specialist', level: 80, resources: [{ label: 'HubSpot Academy', url: 'https://academy.hubspot.com' }] },
+      { name: 'Data Analytics & Visualization', level: 80, resources: [{ label: 'Tableau Public', url: 'https://public.tableau.com' }] },
+      { name: 'Learn JavaScript', level: 80, resources: [{ label: 'JavaScript.info', url: 'https://javascript.info' }] },
     ]
   },
   {
     name: 'Business & Management',
     items: [
-      { name: 'Investment Banking', level: 80 },
-      { name: 'Strategic Human Resource Management', level: 80 },
-      { name: 'Leadership & Motivation', level: 80 },
-      { name: 'Principles of Retailing', level: 80 },
+      { name: 'Investment Banking', level: 80, resources: [{ label: 'Investopedia', url: 'https://www.investopedia.com/investment-banking-4689814' }] },
+      { name: 'Strategic Human Resource Management', level: 80, resources: [] },
+      { name: 'Leadership & Motivation', level: 80, resources: [{ label: 'MindTools', url: 'https://www.mindtools.com/leadership' }] },
+      { name: 'Principles of Retailing', level: 80, resources: [] },
     ]
   },
   {
     name: 'Mathematics & Analytics',
     items: [
-      { name: 'Basic Mathematics', level: 85 },
-      { name: 'Data Analytics', level: 80 },
+      { name: 'Basic Mathematics', level: 85, resources: [{ label: 'Khan Academy', url: 'https://www.khanacademy.org/math' }] },
+      { name: 'Data Analytics', level: 80, resources: [{ label: 'Google Analytics', url: 'https://analytics.google.com' }] },
     ]
   },
   {
     name: 'Personal Finance',
     items: [
-      { name: 'Money Management', level: 95 },
-      { name: 'Money Psychology', level: 75 },
-      { name: 'Options and Futures', level: 95 },
-      { name: 'Stock Market', level: 90 },
-      { name: 'Mutual Funds', level: 97 },
-      { name: 'Retirement Planning', level: 75 },
-      { name: 'Tax Planning', level: 75 },
-      { name: 'Insurance', level: 75 },
-      { name: 'Real Estate', level: 40 },
-      { name: 'Cryptocurrency', level: 89 },
-      { name: 'Investment Strategies', level: 99 },
-      { name: 'Financial Planning', level: 99 },
-      { name: 'Risk Management', level: 90 },
-      { name: 'Financial Literacy', level: 96 },
-      { name: 'Financial Security', level: 99 },
-      { name: 'Financial Freedom', level: 90 },
+      { name: 'Money Management', level: 95, resources: [{ label: 'Investopedia', url: 'https://www.investopedia.com' }] },
+      { name: 'Money Psychology', level: 75, resources: [] },
+      { name: 'Options and Futures', level: 95, resources: [{ label: 'NSE India', url: 'https://www.nseindia.com' }] },
+      { name: 'Stock Market', level: 90, resources: [{ label: 'Zerodha Varsity', url: 'https://zerodha.com/varsity/' }] },
+      { name: 'Mutual Funds', level: 97, resources: [{ label: 'AMFI India', url: 'https://www.amfiindia.com' }] },
+      { name: 'Retirement Planning', level: 75, resources: [] },
+      { name: 'Tax Planning', level: 75, resources: [{ label: 'Income Tax India', url: 'https://www.incometax.gov.in' }] },
+      { name: 'Insurance', level: 75, resources: [] },
+      { name: 'Real Estate', level: 40, resources: [{ label: 'MagicBricks', url: 'https://www.magicbricks.com' }] },
+      { name: 'Cryptocurrency', level: 89, resources: [{ label: 'CoinMarketCap', url: 'https://coinmarketcap.com' }] },
+      { name: 'Investment Strategies', level: 99, resources: [{ label: 'Zerodha Varsity', url: 'https://zerodha.com/varsity/' }] },
+      { name: 'Financial Planning', level: 99, resources: [] },
+      { name: 'Risk Management', level: 90, resources: [] },
+      { name: 'Financial Literacy', level: 96, resources: [] },
+      { name: 'Financial Security', level: 99, resources: [] },
+      { name: 'Financial Freedom', level: 90, resources: [] },
     ]
   }
 ]
@@ -510,6 +526,19 @@ const lastUpdated = new Date().toLocaleDateString('en-US', {
   day: 'numeric' 
 })
 
+// Window states: 'normal' | 'minimized' | 'maximized' | 'closed'
+const windowStates = reactive<Record<string, string>>({
+  about: 'normal',
+  skills: 'normal',
+  projects: 'normal',
+  contact: 'normal'
+})
+
+const closeWindow = (name: string) => { windowStates[name] = 'closed' }
+const minimizeWindow = (name: string) => { windowStates[name] = windowStates[name] === 'minimized' ? 'normal' : 'minimized' }
+const maximizeWindow = (name: string) => { windowStates[name] = windowStates[name] === 'maximized' ? 'normal' : 'maximized' }
+const restoreWindow = (name: string) => { windowStates[name] = 'normal' }
+
 // Time display
 const currentTime = ref('')
 let timeInterval: number
@@ -584,24 +613,32 @@ const submitForm = async () => {
   }
 }
 
-// Only keep the following for visitor counter:
 let visitorInterval: number | undefined
 
 const fetchVisitorCount = async () => {
   try {
     const response = await fetch(`${API_BASE}/visitors`)
     const data = await response.json()
-    if (data.success) {
+    if (data.count !== undefined && data.count !== null) {
       visitorCount.value = data.count
     }
-  } catch (error) {
-    // Optionally handle error
+  } catch {
+    // Silent fail - counter shows 0
+  }
+}
+
+const trackVisit = async () => {
+  try {
+    await fetch(`${API_BASE}/visitors`, { method: 'POST' })
+  } catch {
+    // Silent fail
   }
 }
 
 onMounted(() => {
+  trackVisit()
   fetchVisitorCount()
-  visitorInterval = setInterval(fetchVisitorCount, 5000)
+  visitorInterval = setInterval(fetchVisitorCount, 30000)
   updateTime()
   timeInterval = window.setInterval(updateTime, 1000)
 })
@@ -783,6 +820,28 @@ onUnmounted(() => {
   border: 3px solid #000000;
   background: #ffffff;
   box-shadow: 5px 5px 0px #cccccc;
+  transition: all 0.3s ease;
+}
+
+.box-closed {
+  display: none;
+}
+
+.box-minimized {
+  box-shadow: none;
+}
+
+.box-maximized {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 999;
+  overflow-y: auto;
+  margin: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .terminal-header {
@@ -804,11 +863,29 @@ onUnmounted(() => {
   height: 12px;
   border-radius: 50%;
   border: 1px solid #000000;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
 }
 
-.terminal-btn.close { background: #ff0000; }
-.terminal-btn.minimize { background: #ffff00; }
-.terminal-btn.maximize { background: #00ff00; }
+.terminal-btn:hover {
+  opacity: 0.75;
+  transform: scale(1.2);
+}
+
+.terminal-btn.close { background: #ff5f57; }
+.terminal-btn.minimize { background: #febc2e; }
+.terminal-btn.maximize { background: #28c840; }
+
+.restore-hint {
+  font-size: 0.75rem;
+  color: #555555;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.restore-hint:hover {
+  color: #000000;
+}
 
 .terminal-title {
   font-weight: bold;
@@ -897,14 +974,70 @@ onUnmounted(() => {
 .skill-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.skill-name-wrapper {
+  position: relative;
+  width: 70px;
+  flex-shrink: 0;
 }
 
 .skill-name {
-  min-width: 120px;
-  font-size: 0.9rem;
+  display: block;
+  font-size: 0.8rem;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.skill-hover-card {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 200;
+  background: #000000;
+  color: #ffffff;
+  padding: 10px 14px;
+  min-width: 180px;
+  max-width: 240px;
+  border: 2px solid #333333;
+  box-shadow: 4px 4px 0px #555555;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.skill-name-wrapper:hover .skill-hover-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-hover-card strong {
+  font-size: 0.85rem;
+  border-bottom: 1px solid #555555;
+  padding-bottom: 4px;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.skill-resource-link {
+  color: #00ff00;
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.skill-resource-link:hover {
+  text-decoration: underline;
+}
+
+.skill-level-text {
+  color: #cccccc;
+  font-size: 0.78rem;
 }
 
 .skill-bar {
@@ -921,6 +1054,10 @@ onUnmounted(() => {
   background: #000000;
   transition: width 2s ease-in-out;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
 }
 
 .skill-progress::after {
@@ -939,11 +1076,13 @@ onUnmounted(() => {
   );
 }
 
-.skill-percentage {
-  min-width: 40px;
-  text-align: right;
+.skill-percentage-inside {
+  color: #ffffff;
+  font-size: 0.65rem;
   font-weight: bold;
-  font-size: 0.9rem;
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
 }
 
 /* Projects Section */
