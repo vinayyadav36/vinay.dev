@@ -5,8 +5,11 @@
   "private": true,
   "scripts": {
     "build": "cd Frontend && npm ci && npm run build",
-    "test": "echo \"No tests configured\" && exit 0",
-    "dev": "cd Frontend && npm run dev",
-    "start": "cd Backend/server && node index.js"
+    "test": "echo \"Run 'npm run test:backend' to test the backend API\" && exit 0",
+    "test:backend": "cd Backend/server && node -e \"import('./index.js').catch(()=>{})\" & sleep 3 && curl -sf http://localhost:4000/api/health && echo 'Backend OK'",
+    "dev:frontend": "cd Frontend && npm run dev",
+    "dev:backend": "cd Backend/server && npm start",
+    "start": "cd Backend/server && node index.js",
+    "install:all": "cd Frontend && npm install && cd ../Backend/server && npm install"
   }
 }

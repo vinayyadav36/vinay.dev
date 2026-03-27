@@ -8,38 +8,29 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import axios from 'axios'
 import dotenv from 'dotenv'
-import { MongoClient } from 'mongodb'
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
-const PORT = process.env.PORT || 8080
+// Port 4000 matches the Vite dev server proxy configuration in Frontend/vite.config.ts
+const PORT = process.env.PORT || 4000
 
 // Data file paths
 const DATA_DIR = path.join(__dirname, 'data')
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json')
 const VISITORS_FILE = path.join(DATA_DIR, 'visitors.json')
 
-// MongoDB setup
-const MONGO_URI = process.env.MONGO_URI; // Set this in Azure config!
-const DB_NAME = 'mydb'; // You can change this
-const COLLECTION = 'visitors';
-let cachedClient = null;
-
-async function getDb() {
-  if (!cachedClient) {
-    cachedClient = new MongoClient(MONGO_URI);
-    await cachedClient.connect();
-  }
-  return cachedClient.db(DB_NAME);
-}
-
 // Middleware
 app.use(helmet())
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4000',
+    process.env.FRONTEND_URL || ''
+  ].filter(Boolean),
   credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))
@@ -151,39 +142,25 @@ app.post('/api/contact',
       // Save contacts
       const saved = await writeJsonFile(CONTACTS_FILE, contacts)
 
-      // Send email to admin using EmailJS REST API
-      try {
-        await axios.post('https://api.emailjs.com/api/v1.0/email/send', {
+      // Send email to admin using EmailJS REST API (non-blocking, best-effort)
+      if (process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_PUBLIC_KEY) {
+        axios.post('https://api.emailjs.com/api/v1.0/email/send', {
           service_id: process.env.EMAILJS_SERVICE_ID,
           template_id: process.env.EMAILJS_ADMIN_TEMPLATE_ID,
           user_id: process.env.EMAILJS_PUBLIC_KEY,
-          template_params: {
-            from_name: name,
-            from_email: email,
-            message: message
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send email via EmailJS:', emailError.response?.data || emailError.message);
-      }
+          template_params: { from_name: name, from_email: email, message }
+        }).catch(err => console.error('Admin email failed:', err.response?.data || err.message, err.code))
 
-      // Schedule a follow-up review request to the user after 1 minute
-      setTimeout(async () => {
-        try {
-          await axios.post('https://api.emailjs.com/api/v1.0/email/send', {
+        // Schedule a follow-up review request after 1 minute
+        setTimeout(() => {
+          axios.post('https://api.emailjs.com/api/v1.0/email/send', {
             service_id: process.env.EMAILJS_SERVICE_ID,
             template_id: process.env.EMAILJS_REVIEW_TEMPLATE_ID,
             user_id: process.env.EMAILJS_PUBLIC_KEY,
-            template_params: {
-              to_email: email,
-              to_name: name
-              // Add more params as needed by your template
-            }
-          });
-        } catch (reviewEmailError) {
-          console.error('Failed to send review request via EmailJS:', reviewEmailError.response?.data || reviewEmailError.message);
-        }
-      }, 60000); // 1 minute delay (60000 ms)
+            template_params: { to_email: email, to_name: name }
+          }).catch(err => console.error('Review email failed:', err.response?.data || err.message, err.code))
+        }, 60000)
+      }
       
       if (saved) {
         res.json({
@@ -229,33 +206,34 @@ app.get('/api/contacts', async (req, res) => {
   }
 })
 
-// Track visitor (MongoDB version)
+// Track visitor
 app.post('/api/visitors', async (req, res) => {
   try {
-    const db = await getDb();
-    const result = await db.collection(COLLECTION).findOneAndUpdate(
-      { _id: 'counter' },
-      { $inc: { count: 1 } },
-      { upsert: true, returnDocument: 'after' }
-    );
-    res.json({ success: true, count: result.value.count });
+    const visitorData = await readJsonFile(VISITORS_FILE) || { count: 0, visits: [] }
+    visitorData.count += 1
+    visitorData.visits.push({
+      timestamp: new Date().toISOString(),
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.headers['user-agent'] || ''
+    })
+    await writeJsonFile(VISITORS_FILE, visitorData)
+    res.json({ success: true, count: visitorData.count })
   } catch (error) {
-    console.error('Visitor tracking error:', error);
-    res.status(500).json({ success: false, message: 'Failed to track visitor' });
+    console.error('Visitor tracking error:', error)
+    res.status(500).json({ success: false, message: 'Failed to track visitor' })
   }
-});
+})
 
-// Get visitor count (MongoDB version)
+// Get visitor count
 app.get('/api/visitors', async (req, res) => {
   try {
-    const db = await getDb();
-    const doc = await db.collection(COLLECTION).findOne({ _id: 'counter' });
-    res.json({ success: true, count: doc?.count || 0 });
+    const visitorData = await readJsonFile(VISITORS_FILE) || { count: 0, visits: [] }
+    res.json({ success: true, count: visitorData.count })
   } catch (error) {
-    console.error('Get visitor count error:', error);
-    res.status(500).json({ success: false, count: 0 });
+    console.error('Get visitor count error:', error)
+    res.status(500).json({ success: false, count: 0 })
   }
-});
+})
 
 // Analytics endpoint (admin - in production, add authentication)
 app.get('/api/analytics', async (req, res) => {
