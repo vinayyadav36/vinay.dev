@@ -9,7 +9,9 @@
     "test:backend": "cd Backend/server && node -e \"import('./index.js').catch(()=>{})\" & sleep 3 && curl -sf http://localhost:4000/api/health && echo 'Backend OK'",
     "dev:frontend": "cd Frontend && npm run dev",
     "dev:backend": "cd Backend/server && npm start",
+    "dev": "npm run dev:backend & npm run dev:frontend",
     "start": "cd Backend/server && node index.js",
+    "server": "NODE_ENV=production node Backend/server/index.js",
     "install:all": "cd Frontend && npm install && cd ../Backend/server && npm install"
   }
 }

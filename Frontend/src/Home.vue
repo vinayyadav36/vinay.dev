@@ -544,7 +544,7 @@ const currentTime = ref('')
 let timeInterval: number
 
 // API Base URL
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || '/api'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 // Update time
 const updateTime = () => {
