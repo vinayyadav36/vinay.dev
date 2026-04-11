@@ -1,59 +1,23 @@
-# This workflow builds and tests both the frontend and backend of vinay.dev
-name: Node.js CI
+# This workflow runs a quick DB health check — full CI is in build.yml
+name: Node.js CI – Health Check
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
 
 jobs:
-  frontend:
-    name: Frontend Build
+  health:
+    name: DB Health Check
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: Frontend/package-lock.json
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: Frontend
-      - name: Build frontend
-        run: npm run build
-        working-directory: Frontend
-
-  backend:
-    name: Backend Test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: Backend/server/package-lock.json
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: Backend/server
-      - name: Test backend health endpoint
-        run: |
-          node Backend/server/index.js &
-          SERVER_PID=$!
-          sleep 3
-          curl -sf http://localhost:4000/api/health
-          curl -sf http://localhost:4000/api/visitors
-          kill $SERVER_PID
+          node-version: '20.x'
+      - name: Run DB health check
+        run: node scripts/mlai/db-health-check.js

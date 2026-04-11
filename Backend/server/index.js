@@ -10,6 +10,11 @@ import axios from 'axios'
 import dotenv from 'dotenv'
 dotenv.config()
 
+import { seedAdminUser } from './services/authService.js'
+import { errorHandler } from './middleware/errorHandler.js'
+import adminRouter from './routes/admin.js'
+import guestbookRouter from './routes/guestbook.js'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -49,6 +54,10 @@ const contactLimiter = rateLimit({
 })
 
 app.use('/api/', limiter)
+
+// Mount routers
+app.use('/api/admin', adminRouter)
+app.use('/api/guestbook', guestbookRouter)
 
 // Initialize data directory and files
 async function initializeData() {
@@ -284,13 +293,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err)
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error'
-  })
-})
+app.use(errorHandler)
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -303,26 +306,45 @@ app.use('*', (req, res) => {
 // Start server
 async function startServer() {
   await initializeData()
+  await seedAdminUser()
   
   app.listen(PORT, () => {
     console.log(`
-╔══════════════════════════════════════╗
-║        90s Personal Website          ║
-║                                      ║
-║  Server running on port ${PORT}         ║
-║  Frontend: http://localhost:5173     ║
-║  Backend:  http://localhost:${PORT}     ║
-║                                      ║
-║  Endpoints:                          ║
-║  POST /api/contact   - Submit form   ║
-║  GET  /api/visitors  - Visitor count ║
-║  POST /api/visitors  - Track visit   ║
-║  GET  /api/contacts  - View messages ║
-║  GET  /api/analytics - Site stats    ║
-║                                      ║
-╚══════════════════════════════════════╝
+╔══════════════════════════════════════════╗
+║        90s Personal Website              ║
+║                                          ║
+║  Server running on port ${PORT}             ║
+║  Frontend: http://localhost:5173         ║
+║  Backend:  http://localhost:${PORT}         ║
+║                                          ║
+║  Endpoints:                              ║
+║  POST /api/contact   - Submit form       ║
+║  GET  /api/visitors  - Visitor count     ║
+║  POST /api/visitors  - Track visit       ║
+║  GET  /api/contacts  - View messages     ║
+║  GET  /api/analytics - Site stats        ║
+║  POST /api/admin/login  - Admin auth     ║
+║  GET  /api/admin/stats  - Site stats     ║
+║  GET  /api/guestbook    - Guestbook      ║
+║                                          ║
+╚══════════════════════════════════════════╝
     `)
   })
 }
 
-startServer().catch(console.error)
+import { fileURLToPath as _fileURLToPath } from 'url'
+
+// setupApp initializes data+admin without binding a port (used by tests)
+export async function setupApp() {
+  await initializeData()
+  await seedAdminUser()
+  return app
+}
+
+const _isMain = process.argv[1] === _fileURLToPath(import.meta.url)
+
+if (_isMain) {
+  startServer().catch(console.error)
+}
+
+export { app }
