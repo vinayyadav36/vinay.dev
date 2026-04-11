@@ -6,15 +6,17 @@
   "private": true,
   "scripts": {
     "build": "cd Frontend && npm ci && npm run build",
-    "lint": "cd Frontend && npx tsc --noEmit && echo 'TypeScript OK'",
-    "test": "cd Backend/server && node index.js & sleep 3 && curl -sf http://localhost:4000/api/health && kill %1 && echo 'Tests passed'",
-    "test:backend": "cd Backend/server && node -e \"import('./index.js').catch(()=>{})\" & sleep 3 && curl -sf http://localhost:4000/api/health && echo 'Backend OK'",
-    "dev:frontend": "cd Frontend && npm run dev",
-    "dev:backend": "cd Backend/server && npm start",
     "dev": "npm run dev:backend & npm run dev:frontend",
-    "start": "cd Backend/server && node index.js",
+    "dev:frontend": "cd Frontend && npm run dev",
+    "dev:backend": "cd Backend/server && node index.js",
+    "start": "node Backend/server/index.js",
     "server": "NODE_ENV=production node Backend/server/index.js",
     "admin": "npm run dev:backend",
+    "lint": "cd Frontend && npx tsc --noEmit && echo 'TypeScript check passed'",
+    "test": "cd Backend/server && npm test",
+    "test:frontend": "cd Frontend && npm test",
+    "test:all": "npm run test && npm run test:frontend",
+    "health-check": "node scripts/mlai/db-health-check.js",
     "install:all": "cd Frontend && npm install && cd ../Backend/server && npm install"
   }
 }

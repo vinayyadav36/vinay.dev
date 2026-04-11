@@ -48,6 +48,8 @@
         <slot />
       </main>
     </div>
+
+    <AdminChatbot />
   </div>
 </template>
 
@@ -55,6 +57,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminAuth } from './useAdminAuth'
+import AdminChatbot from './AdminChatbot.vue'
 
 const router = useRouter()
 const { user, logout, verifySession } = useAdminAuth()

@@ -98,6 +98,23 @@
             <div class="msg-body">{{ msg.message }}</div>
           </div>
         </div>
+
+        <!-- Achievements -->
+        <div class="section-box">
+          <div class="section-title">━━ ACHIEVEMENTS ━━</div>
+          <div class="achievements-grid">
+            <div
+              v-for="ach in achievements"
+              :key="ach.title"
+              class="ach-card"
+              :class="ach.unlocked ? 'ach-unlocked' : 'ach-locked'"
+            >
+              <div class="ach-icon">{{ ach.unlocked ? ach.icon : '🔒' }}</div>
+              <div class="ach-title">{{ ach.unlocked ? ach.title : '??? ' + ach.title }}</div>
+              <div class="ach-desc">{{ ach.description }}</div>
+            </div>
+          </div>
+        </div>
       </template>
     </div>
   </AdminLayout>
@@ -133,6 +150,49 @@ const stats = ref<Stats>({
   guestbook: { total: 0 },
   recentActivity: []
 })
+
+const achievements = computed(() => [
+  {
+    icon: '🌐', title: 'FIRST CONTACT',
+    description: 'Received your first message',
+    unlocked: stats.value.contacts.total >= 1
+  },
+  {
+    icon: '👥', title: 'SOCIAL NODE',
+    description: '10+ visitors discovered your site',
+    unlocked: stats.value.visitors.total >= 10
+  },
+  {
+    icon: '📝', title: 'AUTHOR',
+    description: 'Published your first post',
+    unlocked: stats.value.posts.published >= 1
+  },
+  {
+    icon: '📖', title: 'SIGNED IN INK',
+    description: 'Got a guestbook entry',
+    unlocked: stats.value.guestbook.total >= 1
+  },
+  {
+    icon: '🔥', title: 'VIRAL',
+    description: '100+ total visitors',
+    unlocked: stats.value.visitors.total >= 100
+  },
+  {
+    icon: '✍️', title: 'PROLIFIC',
+    description: '5+ posts created',
+    unlocked: stats.value.posts.total >= 5
+  },
+  {
+    icon: '📬', title: 'INBOX HERO',
+    description: '10+ contact messages',
+    unlocked: stats.value.contacts.total >= 10
+  },
+  {
+    icon: '⚡', title: '1337',
+    description: '1337+ total visitors',
+    unlocked: stats.value.visitors.total >= 1337
+  }
+])
 
 const maxChart = computed(() => Math.max(...stats.value.visitors.chart.map(d => d.count), 1))
 
@@ -344,4 +404,59 @@ onUnmounted(() => {
 .msg-from { color: #00ffff; }
 .msg-date { color: #444; font-size: 0.72rem; }
 .msg-body { color: #00bb30; }
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+
+@media (max-width: 768px) {
+  .achievements-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ach-card {
+  border: 1px solid #1a1a1a;
+  padding: 0.7rem;
+  text-align: center;
+  font-size: 0.72rem;
+  transition: box-shadow 0.2s;
+}
+
+.ach-unlocked {
+  border-color: #00ff41;
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.35);
+}
+
+.ach-locked {
+  border-color: #222;
+  opacity: 0.45;
+}
+
+.ach-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.ach-title {
+  color: #00ffff;
+  letter-spacing: 1px;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.ach-locked .ach-title {
+  color: #555;
+}
+
+.ach-desc {
+  color: #226622;
+  font-size: 0.65rem;
+}
+
+.ach-locked .ach-desc {
+  color: #333;
+}
 </style>

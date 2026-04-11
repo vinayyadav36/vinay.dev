@@ -10,7 +10,8 @@ import axios from 'axios'
 import dotenv from 'dotenv'
 dotenv.config()
 
-import { getDb } from './db.js'
+import { seedAdminUser } from './services/authService.js'
+import { errorHandler } from './middleware/errorHandler.js'
 import adminRouter from './routes/admin.js'
 import guestbookRouter from './routes/guestbook.js'
 
@@ -292,13 +293,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err)
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error'
-  })
-})
+app.use(errorHandler)
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -311,7 +306,7 @@ app.use('*', (req, res) => {
 // Start server
 async function startServer() {
   await initializeData()
-  getDb() // initialize SQLite on startup
+  await seedAdminUser()
   
   app.listen(PORT, () => {
     console.log(`
@@ -337,4 +332,19 @@ async function startServer() {
   })
 }
 
-startServer().catch(console.error)
+import { fileURLToPath as _fileURLToPath } from 'url'
+
+// setupApp initializes data+admin without binding a port (used by tests)
+export async function setupApp() {
+  await initializeData()
+  await seedAdminUser()
+  return app
+}
+
+const _isMain = process.argv[1] === _fileURLToPath(import.meta.url)
+
+if (_isMain) {
+  startServer().catch(console.error)
+}
+
+export { app }

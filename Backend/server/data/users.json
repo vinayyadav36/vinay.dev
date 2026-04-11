@@ -1,0 +1,42 @@
+[
+  {
+    "id": 3,
+    "username": "created_1775886221520",
+    "email": "created_1775886221520@test.com",
+    "password_hash": "$2b$10$SWqtVdqc5AUsusX0XSy8NuHXcFlIZMNkg11sTx8CFXRCTRHD1p5o6",
+    "role": "user",
+    "is_banned": false,
+    "created_at": "2026-04-11T05:43:41.612Z",
+    "updated_at": "2026-04-11T05:43:41.612Z"
+  },
+  {
+    "id": 6,
+    "username": "created_1775886323407",
+    "email": "created_1775886323407@test.com",
+    "password_hash": "$2b$10$snPjy07Cj3PPH66r/Uq2KOwho7mgg6vAy9pDV1wbD/nk6ChnkdHUK",
+    "role": "user",
+    "is_banned": false,
+    "created_at": "2026-04-11T05:45:23.525Z",
+    "updated_at": "2026-04-11T05:45:23.525Z"
+  },
+  {
+    "id": 8,
+    "username": "admin",
+    "email": "admin@vinay.dev",
+    "password_hash": "$2b$10$TVrHNI0hLFvKu33VJY0T1erbizCChgH1QmSeRyYD38tUMwj8pzKyW",
+    "role": "admin",
+    "is_banned": false,
+    "created_at": "2026-04-11T05:49:41.493Z",
+    "updated_at": "2026-04-11T05:49:41.493Z"
+  },
+  {
+    "id": 9,
+    "username": "created_1775886581680",
+    "email": "created_1775886581680@test.com",
+    "password_hash": "$2b$10$GzdXe.UNxEoUZGHfc5nVeeTFcIRYr1JL2wExtW8Kwc.bpjVjcrRia",
+    "role": "user",
+    "is_banned": false,
+    "created_at": "2026-04-11T05:49:41.770Z",
+    "updated_at": "2026-04-11T05:49:41.770Z"
+  }
+]

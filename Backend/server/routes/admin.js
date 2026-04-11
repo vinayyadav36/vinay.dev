@@ -4,7 +4,8 @@ import { body, validationResult } from 'express-validator'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { getDb } from '../db.js'
+import { findAll, findById, findOne, insert, update, remove, count } from '../services/jsonStore.js'
+import { validateCredentials } from '../services/authService.js'
 import { verifyToken, requireAdmin, generateToken } from '../middleware/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -14,15 +15,14 @@ const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json')
 
 const router = Router()
 
-function logAction(userId, action, details, ip) {
+async function logAction(userId, action, details, ip) {
   try {
-    const db = getDb()
-    db.prepare('INSERT INTO logs (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(
-      userId ?? null,
+    await insert('logs', {
+      user_id: userId ?? null,
       action,
-      details ? JSON.stringify(details) : null,
-      ip ?? null
-    )
+      details: details ? JSON.stringify(details) : null,
+      ip: ip ?? null
+    })
   } catch (err) {
     console.error('[admin] logAction error:', err)
   }
@@ -41,11 +41,10 @@ router.post('/login',
     }
 
     try {
-      const db = getDb()
       const { username, password } = req.body
-      const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username)
+      const user = await validateCredentials(username, password)
 
-      if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' })
       }
       if (user.is_banned) {
@@ -59,7 +58,7 @@ router.post('/login',
         role: user.role
       })
 
-      logAction(user.id, 'LOGIN', { username: user.username }, req.ip)
+      await logAction(user.id, 'LOGIN', { username: user.username }, req.ip)
 
       return res.json({
         success: true,
@@ -81,8 +80,6 @@ router.get('/me', verifyToken, (req, res) => {
 // GET /api/admin/stats
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
-    const db = getDb()
-
     let visitorsData = { count: 0, visits: [] }
     try {
       const raw = await fs.readFile(VISITORS_FILE, 'utf8')
@@ -103,29 +100,31 @@ router.get('/stats', requireAdmin, async (req, res) => {
     const todayVisits = visitorsData.visits.filter(v => new Date(v.timestamp).toDateString() === todayStr).length
     const weeklyVisits = visitorsData.visits.filter(v => new Date(v.timestamp) >= weekAgo).length
 
-    // Build 7-day chart
     const chart = []
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
       const label = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
       const dayStr = d.toDateString()
-      const count = visitorsData.visits.filter(v => new Date(v.timestamp).toDateString() === dayStr).length
-      chart.push({ label, count })
+      const dayCount = visitorsData.visits.filter(v => new Date(v.timestamp).toDateString() === dayStr).length
+      chart.push({ label, count: dayCount })
     }
 
-    const usersTotal = db.prepare('SELECT COUNT(*) as c FROM users').get().c
-    const postsTotal = db.prepare('SELECT COUNT(*) as c FROM posts').get().c
-    const postsPublished = db.prepare("SELECT COUNT(*) as c FROM posts WHERE status = 'published'").get().c
-    const guestbookTotal = db.prepare('SELECT COUNT(*) as c FROM guestbook').get().c
+    const usersTotal = count('users')
+    const postsTotal = count('posts')
+    const postsPublished = findAll('posts').filter(p => p.status === 'published').length
+    const guestbookTotal = count('guestbook')
 
-    const recentActivity = db.prepare(`
-      SELECT l.id, l.action, l.details, l.ip, l.created_at, u.username
-      FROM logs l
-      LEFT JOIN users u ON l.user_id = u.id
-      ORDER BY l.created_at DESC
-      LIMIT 15
-    `).all()
+    const allUsers = findAll('users')
+    const recentLogs = findAll('logs', { sortBy: 'created_at', desc: true, limit: 15 })
+    const recentActivity = recentLogs.map(log => ({
+      id: log.id,
+      action: log.action,
+      details: log.details,
+      ip: log.ip,
+      created_at: log.created_at,
+      username: allUsers.find(u => u.id === log.user_id)?.username ?? null
+    }))
 
     return res.json({
       success: true,
@@ -153,10 +152,8 @@ router.get('/stats', requireAdmin, async (req, res) => {
 // GET /api/admin/users
 router.get('/users', requireAdmin, (req, res) => {
   try {
-    const db = getDb()
-    const users = db.prepare(
-      'SELECT id, username, email, role, is_banned, created_at FROM users ORDER BY created_at DESC'
-    ).all()
+    const users = findAll('users', { sortBy: 'created_at', desc: true })
+      .map(({ password_hash, ...u }) => u) // eslint-disable-line no-unused-vars
     return res.json({ success: true, users })
   } catch (err) {
     console.error('[admin/users]', err)
@@ -171,23 +168,24 @@ router.put('/users/:id',
     body('role').optional().isIn(['admin', 'moderator', 'editor', 'user']).withMessage('Invalid role'),
     body('is_banned').optional().isBoolean()
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, message: errors.array()[0].msg })
     }
 
     try {
-      const db = getDb()
       const { id } = req.params
       const { role, is_banned } = req.body
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+      const user = findById('users', id)
       if (!user) return res.status(404).json({ success: false, message: 'User not found' })
 
-      if (role !== undefined) db.prepare('UPDATE users SET role = ?, updated_at = datetime("now") WHERE id = ?').run(role, id)
-      if (is_banned !== undefined) db.prepare('UPDATE users SET is_banned = ?, updated_at = datetime("now") WHERE id = ?').run(is_banned ? 1 : 0, id)
+      const changes = {}
+      if (role !== undefined) changes.role = role
+      if (is_banned !== undefined) changes.is_banned = !!is_banned
+      await update('users', id, changes)
 
-      logAction(req.user.id, 'UPDATE_USER', { targetId: id, role, is_banned }, req.ip)
+      await logAction(req.user.id, 'UPDATE_USER', { targetId: id, role, is_banned }, req.ip)
       return res.json({ success: true, message: 'User updated' })
     } catch (err) {
       console.error('[admin/users PUT]', err)
@@ -207,14 +205,13 @@ router.post('/users/:id/reset-password',
     }
 
     try {
-      const db = getDb()
       const { id } = req.params
-      const user = db.prepare('SELECT id FROM users WHERE id = ?').get(id)
+      const user = findById('users', id)
       if (!user) return res.status(404).json({ success: false, message: 'User not found' })
 
-      const hash = await bcrypt.hash(req.body.newPassword, 10)
-      db.prepare('UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?').run(hash, id)
-      logAction(req.user.id, 'RESET_PASSWORD', { targetId: id }, req.ip)
+      const password_hash = await bcrypt.hash(req.body.newPassword, 10)
+      await update('users', id, { password_hash })
+      await logAction(req.user.id, 'RESET_PASSWORD', { targetId: id }, req.ip)
       return res.json({ success: true, message: 'Password reset' })
     } catch (err) {
       console.error('[admin/reset-password]', err)
@@ -224,18 +221,17 @@ router.post('/users/:id/reset-password',
 )
 
 // DELETE /api/admin/users/:id
-router.delete('/users/:id', requireAdmin, (req, res) => {
+router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
-    const db = getDb()
     const { id } = req.params
     if (Number(id) === req.user.id) {
       return res.status(400).json({ success: false, message: 'Cannot delete your own account' })
     }
-    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(id)
+    const user = findById('users', id)
     if (!user) return res.status(404).json({ success: false, message: 'User not found' })
 
-    db.prepare('DELETE FROM users WHERE id = ?').run(id)
-    logAction(req.user.id, 'DELETE_USER', { targetId: id }, req.ip)
+    await remove('users', id)
+    await logAction(req.user.id, 'DELETE_USER', { targetId: id }, req.ip)
     return res.json({ success: true, message: 'User deleted' })
   } catch (err) {
     console.error('[admin/users DELETE]', err)
@@ -246,13 +242,11 @@ router.delete('/users/:id', requireAdmin, (req, res) => {
 // GET /api/admin/posts
 router.get('/posts', requireAdmin, (req, res) => {
   try {
-    const db = getDb()
-    const posts = db.prepare(`
-      SELECT p.*, u.username as author
-      FROM posts p
-      LEFT JOIN users u ON p.author_id = u.id
-      ORDER BY p.created_at DESC
-    `).all()
+    const allUsers = findAll('users')
+    const posts = findAll('posts', { sortBy: 'created_at', desc: true }).map(post => ({
+      ...post,
+      author: allUsers.find(u => u.id === post.author_id)?.username ?? null
+    }))
     return res.json({ success: true, posts })
   } catch (err) {
     console.error('[admin/posts GET]', err)
@@ -268,23 +262,20 @@ router.post('/posts',
     body('content').trim().isLength({ min: 1 }).withMessage('Content required'),
     body('status').isIn(['draft', 'published']).withMessage('Status must be draft or published')
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, message: errors.array()[0].msg })
     }
 
     try {
-      const db = getDb()
       const { title, content, status } = req.body
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
 
-      const result = db.prepare(
-        'INSERT INTO posts (title, slug, content, status, author_id) VALUES (?, ?, ?, ?, ?)'
-      ).run(title, slug, content, status, req.user.id)
+      const post = await insert('posts', { title, slug, content, status, author_id: req.user.id })
 
-      logAction(req.user.id, 'CREATE_POST', { postId: result.lastInsertRowid, title }, req.ip)
-      return res.status(201).json({ success: true, id: result.lastInsertRowid, slug })
+      await logAction(req.user.id, 'CREATE_POST', { postId: post.id, title }, req.ip)
+      return res.status(201).json({ success: true, id: post.id, slug })
     } catch (err) {
       console.error('[admin/posts POST]', err)
       return res.status(500).json({ success: false, message: 'Server error' })
@@ -300,24 +291,25 @@ router.put('/posts/:id',
     body('content').optional().trim().isLength({ min: 1 }),
     body('status').optional().isIn(['draft', 'published'])
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, message: errors.array()[0].msg })
     }
 
     try {
-      const db = getDb()
       const { id } = req.params
-      const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(id)
+      const post = findById('posts', id)
       if (!post) return res.status(404).json({ success: false, message: 'Post not found' })
 
       const { title, content, status } = req.body
-      if (title !== undefined) db.prepare('UPDATE posts SET title = ?, updated_at = datetime("now") WHERE id = ?').run(title, id)
-      if (content !== undefined) db.prepare('UPDATE posts SET content = ?, updated_at = datetime("now") WHERE id = ?').run(content, id)
-      if (status !== undefined) db.prepare('UPDATE posts SET status = ?, updated_at = datetime("now") WHERE id = ?').run(status, id)
+      const changes = {}
+      if (title !== undefined) changes.title = title
+      if (content !== undefined) changes.content = content
+      if (status !== undefined) changes.status = status
+      await update('posts', id, changes)
 
-      logAction(req.user.id, 'UPDATE_POST', { postId: id, title, status }, req.ip)
+      await logAction(req.user.id, 'UPDATE_POST', { postId: id, title, status }, req.ip)
       return res.json({ success: true, message: 'Post updated' })
     } catch (err) {
       console.error('[admin/posts PUT]', err)
@@ -327,15 +319,14 @@ router.put('/posts/:id',
 )
 
 // DELETE /api/admin/posts/:id
-router.delete('/posts/:id', requireAdmin, (req, res) => {
+router.delete('/posts/:id', requireAdmin, async (req, res) => {
   try {
-    const db = getDb()
     const { id } = req.params
-    const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(id)
+    const post = findById('posts', id)
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' })
 
-    db.prepare('DELETE FROM posts WHERE id = ?').run(id)
-    logAction(req.user.id, 'DELETE_POST', { postId: id }, req.ip)
+    await remove('posts', id)
+    await logAction(req.user.id, 'DELETE_POST', { postId: id }, req.ip)
     return res.json({ success: true, message: 'Post deleted' })
   } catch (err) {
     console.error('[admin/posts DELETE]', err)
@@ -346,14 +337,15 @@ router.delete('/posts/:id', requireAdmin, (req, res) => {
 // GET /api/admin/logs
 router.get('/logs', requireAdmin, (req, res) => {
   try {
-    const db = getDb()
-    const logs = db.prepare(`
-      SELECT l.id, l.action, l.details, l.ip, l.created_at, u.username
-      FROM logs l
-      LEFT JOIN users u ON l.user_id = u.id
-      ORDER BY l.created_at DESC
-      LIMIT 100
-    `).all()
+    const allUsers = findAll('users')
+    const logs = findAll('logs', { sortBy: 'created_at', desc: true, limit: 100 }).map(log => ({
+      id: log.id,
+      action: log.action,
+      details: log.details,
+      ip: log.ip,
+      created_at: log.created_at,
+      username: allUsers.find(u => u.id === log.user_id)?.username ?? null
+    }))
     return res.json({ success: true, logs })
   } catch (err) {
     console.error('[admin/logs]', err)
