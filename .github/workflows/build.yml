@@ -43,9 +43,24 @@ jobs:
       - name: Smoke test live server
         working-directory: .
         run: |
+          set -euo pipefail
           node Backend/server/index.js &
           SERVER_PID=$!
-          sleep 4
+
+          cleanup() {
+            if kill -0 "$SERVER_PID" 2>/dev/null; then
+              kill "$SERVER_PID"
+            fi
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 20); do
+            if curl -sf http://localhost:4000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
           curl -sf http://localhost:4000/api/health
           TOKEN=$(curl -sf -X POST http://localhost:4000/api/admin/login \
             -H 'Content-Type: application/json' \
@@ -54,7 +69,6 @@ jobs:
           test -n "$TOKEN"
           curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/admin/stats
           curl -sf http://localhost:4000/api/guestbook
-          kill $SERVER_PID
 
   ml-scripts:
     name: ML/AI Scripts

@@ -18,5 +18,9 @@
     "test:all": "npm run test && npm run test:frontend",
     "health-check": "node scripts/mlai/db-health-check.js",
     "install:all": "cd Frontend && npm install && cd ../Backend/server && npm install"
+  },
+  "dependencies": {
+    "@datadog/browser-rum": "^6.32.0",
+    "@datadog/browser-rum-react": "^6.32.0"
   }
 }
