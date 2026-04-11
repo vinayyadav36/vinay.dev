@@ -33,7 +33,10 @@
           <router-link to="/business" class="nav-link">[ BUSINESS ]</router-link>
           <a href="#contact" class="nav-link" @click="scrollToSection('contact')">[ CONTACT ]</a>
           <router-link to="/guestbook" class="nav-link">[ GUESTBOOK ]</router-link>
-          <a href="/admin/login" class="nav-link" target="_blank">[ ADMIN ]</a>
+          <router-link to="/admin/login" class="nav-link admin-entry-link" title="Admin Control Room">
+            <span class="admin-icon">⚙</span>
+            <span class="admin-label">ADMIN</span>
+          </router-link>
         </div>
       </div>
     </nav>
@@ -826,6 +829,52 @@ function handleKonami(e: KeyboardEvent) {
   border-color: #000000;
   background: #000000;
   color: #ffffff;
+}
+
+/* Admin entry icon — subtly separated from regular nav links */
+.admin-entry-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  padding: 6px 12px;
+  border: 2px solid #555555;
+  color: #333333;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.admin-entry-link::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 22px;
+  width: 2px;
+  background: #cccccc;
+}
+
+.admin-icon {
+  font-size: 1rem;
+  display: inline-block;
+  transition: transform 0.4s ease;
+}
+
+.admin-label {
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.admin-entry-link:hover {
+  border-color: #000000;
+  background: #000000;
+  color: #ffffff;
+}
+
+.admin-entry-link:hover .admin-icon {
+  transform: rotate(90deg);
 }
 
 /* Main Content */
