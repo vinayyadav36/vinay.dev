@@ -3,7 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
-import fsSync from 'fs'
+import fsSyncAPI from 'fs'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -285,19 +285,17 @@ app.get('/api/analytics', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   // Deployment artifact layout (Azure workflow copies Frontend/dist here) and local monorepo layout
   const frontendDistCandidates = [
-    path.join(__dirname, 'public'),
-    path.join(__dirname, '../../Frontend/dist')
+    { dir: path.join(__dirname, 'public'), indexFile: path.join(__dirname, 'public', 'index.html') },
+    { dir: path.join(__dirname, '../../Frontend/dist'), indexFile: path.join(__dirname, '../../Frontend/dist', 'index.html') }
   ]
-  const FRONTEND_DIST = frontendDistCandidates.find((dir) =>
-    fsSync.existsSync(path.join(dir, 'index.html'))
-  )
+  const frontendDist = frontendDistCandidates.find(({ indexFile }) => fsSyncAPI.existsSync(indexFile))?.dir
 
-  if (FRONTEND_DIST) {
-    app.use(express.static(FRONTEND_DIST))
+  if (frontendDist) {
+    app.use(express.static(frontendDist))
 
     // SPA Fallback: serve index.html for any non-API route
     app.get(/^\/(?!api).*/, (req, res) => {
-      res.sendFile(path.join(FRONTEND_DIST, 'index.html'))
+      res.sendFile(path.join(frontendDist, 'index.html'))
     })
   } else {
     console.warn('[startup] Frontend distribution directory not found; static assets will not be served.')
