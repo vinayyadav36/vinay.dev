@@ -3,7 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
-import fsSyncAPI from 'fs'
+import fsSync from 'fs'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -288,7 +288,7 @@ if (process.env.NODE_ENV === 'production') {
     { dir: path.join(__dirname, 'public'), indexFile: path.join(__dirname, 'public', 'index.html') },
     { dir: path.join(__dirname, '../../Frontend/dist'), indexFile: path.join(__dirname, '../../Frontend/dist', 'index.html') }
   ]
-  const frontendDist = frontendDistCandidates.find(({ indexFile }) => fsSyncAPI.existsSync(indexFile))?.dir
+  const frontendDist = frontendDistCandidates.find(({ indexFile }) => fsSync.existsSync(indexFile))?.dir
 
   if (frontendDist) {
     app.use(express.static(frontendDist))
