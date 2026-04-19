@@ -285,17 +285,17 @@ app.get('/api/analytics', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   // Deployment artifact layout (Azure workflow copies Frontend/dist here) and local monorepo layout
   const frontendDistCandidates = [
-    { dir: path.join(__dirname, 'public'), indexFile: path.join(__dirname, 'public', 'index.html') },
-    { dir: path.join(__dirname, '../../Frontend/dist'), indexFile: path.join(__dirname, '../../Frontend/dist', 'index.html') }
+    path.join(__dirname, 'public'),
+    path.join(__dirname, '../../Frontend/dist')
   ]
-  const frontendDist = frontendDistCandidates.find(({ indexFile }) => fsSync.existsSync(indexFile))?.dir
+  const frontendDistPath = frontendDistCandidates.find((dir) => fsSync.existsSync(path.join(dir, 'index.html')))
 
-  if (frontendDist) {
-    app.use(express.static(frontendDist))
+  if (frontendDistPath) {
+    app.use(express.static(frontendDistPath))
 
     // SPA Fallback: serve index.html for any non-API route
     app.get(/^\/(?!api).*/, (req, res) => {
-      res.sendFile(path.join(frontendDist, 'index.html'))
+      res.sendFile(path.join(frontendDistPath, 'index.html'))
     })
   } else {
     console.warn('[startup] Frontend distribution directory not found; static assets will not be served.')
